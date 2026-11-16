@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { monthLabel, dateLabel } from './utils.js';
+import { dateLabel } from './utils.js';
+import { banglaImage, banglaTableHooks, hasBangla, loadBanglaFont } from './bangla.js';
 
 // jsPDF's built-in font has no "৳" glyph, so PDFs use "Tk"
 export const tk = (n) => 'Tk ' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -42,11 +43,21 @@ function drawHeader(doc, logo, title, lines) {
   doc.setTextColor(...GREEN);
   doc.text(title, 14 + off, 18);
 
+  const maxW = pageW - 28 - off;
   doc.setFontSize(10);
   doc.setTextColor(80);
   let y = 18;
   lines.filter(Boolean).forEach((line) => {
-    doc.splitTextToSize(line, pageW - 28 - off).forEach((piece) => {
+    if (hasBangla(line)) {
+      // a line with a Bangla name (e.g. the chosen member) is drawn as a picture
+      const img = banglaImage(line, { widthMm: maxW, fontPt: 10, color: [80, 80, 80] });
+      const k = Math.min(1, maxW / img.wMm);
+      const top = y + 1.5;
+      doc.addImage(img.dataUrl, 'PNG', 14 + off, top, img.wMm * k, img.hMm * k);
+      y = top + img.hMm * k - 1.3;
+      return;
+    }
+    doc.splitTextToSize(line, maxW).forEach((piece) => {
       y += 5;
       doc.text(piece, 14 + off, y);
     });
@@ -71,102 +82,14 @@ function addPageNumbers(doc) {
   }
 }
 
-export async function downloadReport(data, filename = 'sadaqa-report.pdf') {
-  const logo = await loadLogo();
-  const doc = new jsPDF();
-
-  const period = /^\d{4}-\d{2}$/.test(data.period) ? monthLabel(data.period) : data.period;
-  let y = drawHeader(doc, logo, 'Sadaqa Fund Report', [
-    `Period: ${period}`,
-    data.memberName ? `Member: ${data.memberName}` : '',
-    `Generated: ${dateLabel(data.generatedAt)}`,
-  ]);
-
-  const s = data.summary;
-  const summaryRows = [
-    ['Total Sadaqah received', tk(s.collected)],
-    ['Total donated', tk(s.donated)],
-    ['Net for this period', tk(s.net)],
-  ];
-  if (!data.memberName) summaryRows.push(['Current fund balance', tk(s.fundBalance)]);
-  autoTable(doc, {
-    startY: y,
-    head: [['Summary', 'Amount']],
-    body: summaryRows,
-    headStyles: { fillColor: GREEN },
-    alternateRowStyles: { fillColor: [251, 249, 243] },
-    theme: 'grid',
-    styles: { fontSize: 10 },
-  });
-  y = doc.lastAutoTable.finalY + 10;
-
-  const heading = (text) => {
-    if (y > 260) {
-      doc.addPage();
-      y = 16;
-    }
-    doc.setFontSize(13);
-    doc.setTextColor(...GREEN);
-    doc.text(text, 14, y);
-    y += 2;
-  };
-
-  if (data.members && data.members.length) {
-    heading('Members');
-    autoTable(doc, {
-      startY: y + 2,
-      head: [['Member', 'Monthly', 'Extra', 'Total (this period)']],
-      body: data.members.map((m) => [`${m.name} (${m.userId})`, tk(m.monthlyTotal), tk(m.extraTotal), tk(m.total)]),
-      headStyles: { fillColor: GREEN },
-      styles: { fontSize: 9 },
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  }
-
-  heading(`Sadaqah received (${data.payments.length})`);
-  autoTable(doc, {
-    startY: y + 2,
-    head: [['Month', 'Member', 'Type', 'To admin', 'Amount']],
-    body: data.payments.length
-      ? data.payments.map((p) => [
-          monthLabel(p.month),
-          p.member ? p.member.name : '-',
-          p.type === 'monthly' ? 'Monthly' : 'Extra',
-          p.toAdmin ? p.toAdmin.name : '-',
-          tk(p.amount),
-        ])
-      : [['No records', '', '', '', '']],
-    headStyles: { fillColor: GREEN },
-    styles: { fontSize: 9 },
-  });
-  y = doc.lastAutoTable.finalY + 10;
-
-  heading(`Donations given (${data.donations.length})`);
-  autoTable(doc, {
-    startY: y + 2,
-    head: [['Month', 'Given to', 'Address', 'Reason', 'Requested by', 'Amount']],
-    body: data.donations.length
-      ? data.donations.map((d) => [
-          monthLabel(d.month),
-          d.recipientName,
-          d.recipientAddress || '-',
-          d.reason || '-',
-          d.requestedBy ? d.requestedBy.name : '-',
-          tk(d.amount),
-        ])
-      : [['No records', '', '', '', '', '']],
-    headStyles: { fillColor: GREEN },
-    styles: { fontSize: 9 },
-  });
-
-  addPageNumbers(doc);
-  doc.save(filename);
-}
-
 // A single table (whatever is on screen in History) as a PDF.
 // head: ['Month', ...]   body: array of row arrays (amounts already formatted)   total: optional number
 export async function downloadHistoryPdf({ title, filterText, head, body, total, extraTables = [], filename }) {
   const logo = await loadLogo();
+
+  // Only wait for the Bangla font when the report actually contains Bangla
+  if (hasBangla(JSON.stringify([head, body, filterText, extraTables]))) await loadBanglaFont();
+
   const doc = new jsPDF({ orientation: head.length > 5 ? 'landscape' : 'portrait' });
   const pageH = doc.internal.pageSize.getHeight();
 
@@ -191,6 +114,7 @@ export async function downloadHistoryPdf({ title, filterText, head, body, total,
       headStyles: { fillColor: GREEN },
       styles: { fontSize: 9 },
       tableWidth: 110,
+      ...banglaTableHooks(),
     });
     startY = doc.lastAutoTable.finalY + 10;
   }
@@ -216,6 +140,7 @@ export async function downloadHistoryPdf({ title, filterText, head, body, total,
     headStyles: { fillColor: GREEN },
     footStyles: { fillColor: GOLD_SOFT, textColor: [30, 60, 40] },
     styles: { fontSize: 9 },
+    ...banglaTableHooks(),
   });
 
   addPageNumbers(doc);

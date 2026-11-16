@@ -82,7 +82,7 @@ Note: free Render services go to sleep when idle, so the first request after a w
 ## Good to know
 
 - **Profile pictures** are resized in the browser to 200x200 and stored inside MongoDB, so no separate file storage is needed.
-- **PDF names**: the PDF's built-in font does not support Bangla letters. Names written in Bangla will not show correctly in PDFs (English names are fine). Bangla fonts can be embedded into jsPDF if you need it.
+- **Bangla in PDFs**: Bangla names, addresses and reasons are drawn with the browser's Bangla font (Noto Sans Bengali from Google Fonts, or the system font) and placed into the PDF as pictures, so they look correct but cannot be selected or copied. English text stays normal PDF text. Excel (CSV) downloads keep all text.
 - **Currency** is shown as ৳ on the website and "Tk" in PDFs.
 - **Disabling** an account (instead of deleting) keeps its past records intact.
 - **Backups**: Atlas free tier has no automatic backups. Export the data now and then (Atlas → Collections → Export, or `mongodump`).

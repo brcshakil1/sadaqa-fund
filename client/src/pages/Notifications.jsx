@@ -4,10 +4,13 @@ import api, { errMsg } from '../api.js';
 import { useAuth } from '../AuthContext.jsx';
 import { dateLabel } from '../utils.js';
 
+const PAGE = 5; // show 5 at first, then 5 more each time "See more" is clicked
+
 export default function Notifications() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
+  const [shown, setShown] = useState(PAGE); // how many notifications are visible
   const [err, setErr] = useState('');
 
   const load = () =>
@@ -45,7 +48,7 @@ export default function Notifications() {
       </div>
       {err && <div className="alert error">{err}</div>}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {items.map((n) => (
+        {items.slice(0, shown).map((n) => (
           <div key={n._id} className={'notif' + (n.read ? '' : ' unread')} onClick={() => open(n)}>
             {n.message}
             <small>{dateLabel(n.createdAt)}</small>
@@ -53,6 +56,16 @@ export default function Notifications() {
         ))}
         {!items.length && <div className="empty">No notifications</div>}
       </div>
+      {items.length > PAGE && (
+        <div className="more-row">
+          <span className="note-text">Showing {Math.min(shown, items.length)} of {items.length}</span>
+          {shown < items.length && (
+            <button className="btn ghost" onClick={() => setShown((s) => s + PAGE)}>
+              See more
+            </button>
+          )}
+        </div>
+      )}
     </>
   );
 }

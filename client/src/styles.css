@@ -26,14 +26,14 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', 'Noto Sans Bengali', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: radial-gradient(1100px 380px at 50% -120px, #ffffff 0, rgba(255, 255, 255, 0) 70%), var(--cream);
   background-attachment: fixed;
   color: var(--ink);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3 { font-family: 'Lora', Georgia, 'Times New Roman', serif; color: var(--green-800); letter-spacing: -0.01em; margin: 0; }
+h1, h2, h3 { font-family: 'Lora', 'Noto Sans Bengali', Georgia, 'Times New Roman', serif; color: var(--green-800); letter-spacing: -0.01em; margin: 0; }
 h1 { font-size: 1.65rem; line-height: 1.2; }
 h2 { font-size: 1.15rem; }
 a { color: var(--green-600); }
@@ -229,3 +229,6 @@ tfoot td:last-child { border-radius: 0 10px 10px 0; }
 .count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: #d92d20; color: #fff; font-size: 0.68rem; font-weight: 700; font-style: normal; line-height: 1; }
 .bottom-nav .ico { position: relative; }
 .bottom-nav .ico .count { position: absolute; top: -6px; right: -14px; margin: 0; border: 2px solid #fff; box-sizing: content-box; }
+
+/* ===== "See more" row under a list ===== */
+.more-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 18px; }
